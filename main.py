@@ -193,7 +193,7 @@ def parse_route_info(text):
                 timetable.append({'time': time, 'red': min_red})
             # print()
         result_stops.append(
-            {'id': id_stop, 'data-services': data_services, 'name': name_stop, 'timetable': timetable})
+            {'id': id_stop, 'data-services': int(data_services), 'name': name_stop, 'timetable': timetable})
     return result_stops
 
 
@@ -212,6 +212,7 @@ def get_route(date, route, direction):
             route_info = parse_route_info(response.text)
         else:
             print("Error status: {}".format(response.status_code))
+            route_info = None
     except Exception:
         print("Error")
         route_info = None
@@ -246,7 +247,7 @@ def load_routes_info_by_number(connection, num_route,direction):
         stops = []
         for stop in cur2.fetchall():
             cur3 = connection.cursor()
-            cur3.execute("SELECT time,red FROM route_stop_times where id_route_stop=?",(stop[2],))
+            cur3.execute("SELECT time,red FROM route_stop_times where id_route_stop=? ORDER BY time",(stop[2],))
             times = list(map((lambda timeinfo: {'time': datetime.time(timeinfo[0]//60,timeinfo[0]%60),'red': timeinfo[1]}),list(cur3.fetchall())))
             stops.append({'timetable':times,'name': stop[1],'id': stop[0]})
 
@@ -269,25 +270,42 @@ routes = get_last_snapshot(connection)
 
 
 
-for route in routes:
-    routes_info = load_routes_info_by_number(connection,route['num'],0)
-    print(routes_info)
-#    qualities.append(test_quality(route,route_info))
-#    if route_info:
-#        store_route_info(connection,route['num'],route_info,datetime.date(2022, 1, 14),0)
-qualities_pd = pandas.DataFrame(qualities)
-qualities_pd.to_csv('qualities.csv')
-
-
-
-# qualities=[]
 # for route in routes:
-#     route_info = get_route(datetime.date(2022, 1, 14), route['num'], 0)
-#     qualities.append(test_quality(route,route_info))
-#     if route_info:
-#         store_route_info(connection,route['num'],route_info,datetime.date(2022, 1, 14),0)
+#     routes_info = load_routes_info_by_number(connection,route['num'],0)
+#     print(routes_info)
+# #    qualities.append(test_quality(route,route_info))
+# #    if route_info:
+# #        store_route_info(connection,route['num'],route_info,datetime.date(2022, 1, 14),0)
 # qualities_pd = pandas.DataFrame(qualities)
 # qualities_pd.to_csv('qualities.csv')
+
+
+
+qualities=[]
+
+
+def store_route_new_info(connection, num_route, route_info, date, direction):
+    prepared_route_info = list(map(lambda stop:{'id': stop['id'],'name': stop['name'],'timetable': sorted(stop['timetable'],key=lambda x: x['time'])},route_info))
+    routes_info = load_routes_info_by_number(connection, num_route, direction)
+
+    for candidate in filter(lambda r: r['data-services']==route_info[0]['data-services'], routes_info):
+        if candidate['stops'] == prepared_route_info:
+            return
+    print("New timetable for route")
+    store_route_info(connection, num_route, route_info, date, direction)
+
+
+
+
+
+
+for route in routes:
+    route_info = get_route(datetime.date(2022, 1, 15), route['num'], 0)
+    qualities.append(test_quality(route,route_info))
+    if route_info:
+        store_route_new_info(connection,route['num'],route_info,datetime.date(2022, 1, 15),0)
+qualities_pd = pandas.DataFrame(qualities)
+qualities_pd.to_csv('qualities_20220115.csv')
 
 
 # routed_data = pd.DataFrame(routes)
