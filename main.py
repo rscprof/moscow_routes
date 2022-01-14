@@ -1,22 +1,18 @@
 # This is a sample Python script.
 
+import datetime
+import sqlite3
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-import re
 from abc import abstractmethod
-from sqlite3 import Connection
 
 import pandas
 
-import requests
-import sqlite3
-import datetime
-
+from logger import LoggerPrint, Logger
 from model import Stop, Stop_builder, Route, Equipment, Timetable, Timetable_stop_builder
 from model_impl import Stop_builder_impl, Timetable_stop_builder_t_mos_ru
 from printer import Printer, PrinterConsole
 from t_mos_ru import get_route, get_list_routes
-from logger import LoggerPrint, Logger
 
 
 class Repository:
@@ -115,11 +111,13 @@ class Repository_sqlite(Repository):
 
         num = 1
         for stop in route_info:
-            id_stop = list(filter(lambda x: x.get_id_stop_t_mos_ru() == stop.get_id_stop_t_mos_ru(), stops))[-1].get_id()
+            id_stop = list(filter(lambda x: x.get_id_stop_t_mos_ru() == stop.get_id_stop_t_mos_ru(), stops))[
+                -1].get_id()
             cur.execute("INSERT INTO route_stop(ord,id_stop,id_timetable) VALUES(?,?,?)", (num, id_stop, id_timetable))
             id_route_stop = cur.lastrowid
             cur.executemany("INSERT INTO route_stop_times(id_route_stop,time,red) VALUES(?,?,?)",
-                            [(id_route_stop, time.get_time().minute + time.get_time().hour * 60, time.check_special_flight()) for time in
+                            [(id_route_stop, time.get_time().minute + time.get_time().hour * 60,
+                              time.check_special_flight()) for time in
                              stop.get_times()]
                             )
             num = num + 1
@@ -167,19 +165,19 @@ def get_and_store_routes_list(repository: Repository, work_time: int, logger: Lo
 
 
 def calculate_quality(route: Route, route_info: Timetable) -> (str, int, int):
-    max = -1
+    max_quality = -1
     if route_info:
         timetable = list(route_info)[0]
-        prevtime = None
+        prev_time = None
         for time in timetable.get_times():
             if datetime.time(7, 0, 0) <= time.get_time() <= datetime.time(21, 0, 0):
-                if not (prevtime is None):
-                    diff = time.get_time().minute + time.get_time().hour * 60 - (prevtime.minute + prevtime.hour * 60)
-                    if diff > max:
-                        max = diff
-                prevtime = time.get_time()
-        print("Route {} ({}) has quality {}".format(route.get_name(), route.get_equipment().to_str(), max))
-    return route.get_name(), route.get_equipment().to_number(), max
+                if not (prev_time is None):
+                    diff = time.get_time().minute + time.get_time().hour * 60 - (prev_time.minute + prev_time.hour * 60)
+                    if diff > max_quality:
+                        max_quality = diff
+                prev_time = time.get_time()
+        print("Route {} ({}) has quality {}".format(route.get_name(), route.get_equipment().to_str(), max_quality))
+    return route.get_name(), route.get_equipment().to_number(), max_quality
 
 
 # for route in routes:
@@ -196,7 +194,7 @@ def calculate_quality(route: Route, route_info: Timetable) -> (str, int, int):
 #
 def store_route_new_info(repository: Repository, num_route: str, route_info: Timetable, date: datetime.date,
                          direction: int,
-                         printer:Printer()=PrinterConsole()):
+                         printer: Printer() = PrinterConsole()):
     prepared_route_info = list(route_info)
     routes_info = repository.load_routes_info_by_number(num_route, direction)
 
@@ -207,18 +205,60 @@ def store_route_new_info(repository: Repository, num_route: str, route_info: Tim
     repository.store_route_info(num_route, route_info, date, direction)
 
 
-repository = Repository_sqlite("mosgrortrans_20220113.sqlite")
-routes = get_and_store_routes_list(repository, work_time=1, logger=LoggerPrint(), printer=PrinterConsole())
-# routes = repository.get_last_snapshot(work_time=1)
+def loading(date: datetime.date, work_time: int, direction: int, repository: Repository):
+    routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
+    # routes = repository.get_last_snapshot(work_time=1)
 
-qualities = []
-for route in routes:
-    route_info = get_route(datetime.date(2022, 1, 16), route.get_id_mgt(), 0, logger=LoggerPrint())
-    qualities.append(calculate_quality(route, route_info))
-    if route_info:
-        store_route_new_info(repository, route.get_id_mgt(), route_info, datetime.date(2022, 1, 16), 0)
-qualities_pd = pandas.DataFrame(qualities)
-qualities_pd.to_csv('qualities_20220116.csv')
+    qualities = []
+    for route in routes:
+        route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+        qualities.append(calculate_quality(route, route_info))
+        if route_info:
+            store_route_new_info(repository, route.get_id_mgt(), route_info, date, direction)
+    qualities_pd = pandas.DataFrame(qualities)
+    qualities_pd.to_csv('qualities_' + date.strftime() + '.csv')
+
+
+def loading(date: datetime.date, work_time: int, direction: int, repository: Repository):
+    routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
+    # routes = repository.get_last_snapshot(work_time=1)
+
+    qualities = []
+    for route in routes:
+        route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+        qualities.append(calculate_quality(route, route_info))
+        if route_info:
+            store_route_new_info(repository, route.get_id_mgt(), route_info, date, direction)
+    qualities_pd = pandas.DataFrame(qualities)
+    qualities_pd.to_csv('qualities_' + date.strftime() + '.csv')
+
+
+def loading_continue(date: datetime.date, work_time: int, direction: int, repository: Repository):
+    # routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
+    routes = repository.get_last_snapshot(work_time=work_time)
+
+    qualities = []
+    for route in routes:
+        routes_info = repository.load_routes_info_by_number(route.get_id_mgt(), direction)
+        routes_filtered = list(filter(lambda timetable: timetable['date'].date() == date, routes_info))
+        if len(routes_filtered) > 0:
+            route_info = routes_filtered[0]['stops']
+            print("Route {} load from database".format(route.get_name()))
+        else:
+            route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+            print("Route {} load got from service".format(route.get_name()))
+            if route_info:
+                store_route_new_info(repository, route.get_id_mgt(), route_info, date, direction)
+        qualities.append(calculate_quality(route, route_info))
+    qualities_pd = pandas.DataFrame(qualities)
+    qualities_pd.to_csv('qualities_' + date.strftime("%Y%m%d") + '.csv')
+
+
+repository = Repository_sqlite('mosgrortrans_20220114.sqlite')
+loading(datetime.date(2022, 1, 16), 1, 0, repository)
+#routes_info = repository.load_routes_info_by_number(2130, 0)
+#routes_filtered = list(filter(lambda timetable: timetable['date'].date() == datetime.date(2022, 1, 16), routes_info))
+#print(routes_filtered)
 
 # routed_data = pd.DataFrame(routes)
 # routed_data.to_csv('routes.csv')

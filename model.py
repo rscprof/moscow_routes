@@ -117,7 +117,7 @@ class Stop_builder:
         pass
 
     @abstractmethod
-    def set_id(self, id: int) -> 'Stop_builder':
+    def set_id(self, id_stop: int) -> 'Stop_builder':
         pass
 
     @abstractmethod

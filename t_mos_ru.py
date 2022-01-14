@@ -1,6 +1,7 @@
 import re
 from abc import abstractmethod
 from datetime import datetime, time
+from typing import Optional
 
 import requests
 
@@ -38,7 +39,7 @@ class parser_timetable_t_mos_ru(parser_timetable):
         @param text: text for parse
         @return Timetable for route
         """
-        result_stops = self.builder()
+        result_stops = type(self.builder())()
         # stops = re.finditer(r'data-stop="([^"]*?)".*?data-services="([^"]*?)".*?d-inline.*?>(.*?)<(.*?)</li>', text,
         #                     re.M + re.S
         #                     )
@@ -48,12 +49,12 @@ class parser_timetable_t_mos_ru(parser_timetable):
 
         for stop in stops:
             id_stop = stop.group(1)
-            #data_services = stop.group(2)
+            # data_services = stop.group(2)
             name_stop = stop.group(2)
             description = stop.group(3)
             self.printer().print(name_stop)
             hours = re.finditer(r'dt1.*?(\d\d):(.*?)</div>\s*</div>\s*</div>', description, re.M + re.S)
-            #result_stops.set_data_services(int(data_services))
+            # result_stops.set_data_services(int(data_services))
             timetable_stop = result_stops.add_stop(id_stop, name_stop)
             for hour in hours:
                 num_hour = int(hour.group(1))
@@ -145,7 +146,7 @@ def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logge
             logger.error("Error status: {}".format(response.status_code))
             route_info = None
     except requests.exceptions.RequestException as e:
-        logger.error("Error " + e.strerror)
+        logger.error("Error " + str(e.strerror))
         route_info = None
 
     if not (route_info is None):
@@ -158,7 +159,7 @@ def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logge
 def get_list_routes(work_time: int, direction: int, logger: Logger,
                     parser: Parser_routes = None,
                     get_routes_url: str = 'https://transport.mos.ru/ru/ajax/App/ScheduleController/getRoutesList'
-                    ) -> list[Route]:
+                    ) -> Optional[list[Route]]:
     """get list routes by work_time and direction from transport.mos.ru
         :param parser: function to parse got string
         :param logger: Logger for printing or saving messages

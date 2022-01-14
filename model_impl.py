@@ -15,8 +15,8 @@ class Stop_impl(Stop):
     def get_id(self) -> int:
         return self.id
 
-    def __init__(self, id: int, id_stop_t_mos_ru: str, name: str):
-        self.id = id
+    def __init__(self, id_stop: int, id_stop_t_mos_ru: str, name: str):
+        self.id = id_stop
         self.id_stop_t_mos_ru = id_stop_t_mos_ru
         self.name = name
 
@@ -36,8 +36,8 @@ class Stop_builder_impl(Stop_builder):
         self.id_stop_t_mos_ru = id_stop_t_mos_ru
         return self
 
-    def set_id(self, id: int) -> Stop_builder:
-        self.id = id
+    def set_id(self, id_stop: int) -> Stop_builder:
+        self.id = id_stop
         return self
 
     def build(self) -> Stop:
@@ -48,7 +48,7 @@ class Timetable_stop_time_t_mos_ru(Timetable_stop_time):
 
     def __init__(self, time_flight: datetime.time, flag_special_flight: bool):
         self.get_time = lambda: time_flight
-        self.get_flag_special_flight =  lambda: flag_special_flight
+        self.get_flag_special_flight = lambda: flag_special_flight
 
     def get_time(self) -> datetime.time:
         return self.get_time()
@@ -80,13 +80,14 @@ class Timetable_stop_t_mos_ru(Timetable_stop):
     def get_times(self):
         return iter(self.times())
 
-    def __eq__(self,other):
-        return self.get_name()==other.get_name() and \
-               self.get_id_stop_t_mos_ru()==other.get_id_stop_t_mos_ru() and \
-               list(sorted(self.get_times(),key=lambda x:x.get_time())) == list(sorted(other.get_times(),key=lambda x:x.get_time()))
+    def __eq__(self, other):
+        return self.get_name() == other.get_name() and \
+               self.get_id_stop_t_mos_ru() == other.get_id_stop_t_mos_ru() and \
+               list(sorted(self.get_times(), key=lambda x: x.get_time())) == list(
+            sorted(other.get_times(), key=lambda x: x.get_time()))
 
-    def __ne__(self,other):
-        return not (self==other)
+    def __ne__(self, other):
+        return not (self == other)
 
 
 class Timetable_t_mos_ru(Timetable):
@@ -165,7 +166,7 @@ class Timetable_builder_t_mos_ru(Timetable_builder):
                                   self.direction,
                                   self.date,
                                   list(map(lambda stop_builder: stop_builder.build(),
-                                      self.stops)))
+                                           self.stops)))
 
     def set_id_route_t_mos_ru(self, id_route_t_mos_ru: str) -> Timetable_builder:
         self.id_route_t_mos_ru = id_route_t_mos_ru
