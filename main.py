@@ -54,9 +54,9 @@ class Repository_sqlite(Repository):
             for stop in cur2.fetchall():
                 builder = timetable_stop_builder()
                 cur3 = self.connection.cursor()
-                cur3.execute("SELECT time,red FROM route_stop_times where id_route_stop=? ORDER BY time", (stop[2],))
+                cur3.execute("SELECT time,color FROM route_stop_times where id_route_stop=? ORDER BY time", (stop[2],))
                 for time_info in cur3.fetchall():
-                    builder.add_item_timetable(datetime.time(time_info[0] // 60, time_info[0] % 60), bool(time_info[1]))
+                    builder.add_item_timetable(datetime.time(time_info[0] // 60, time_info[0] % 60), time_info[1])
                 builder.set_name(stop[1]).set_id_stop_t_mos_ru(stop[0])
                 stops.append(builder.build())
 
@@ -115,9 +115,9 @@ class Repository_sqlite(Repository):
                 -1].get_id()
             cur.execute("INSERT INTO route_stop(ord,id_stop,id_timetable) VALUES(?,?,?)", (num, id_stop, id_timetable))
             id_route_stop = cur.lastrowid
-            cur.executemany("INSERT INTO route_stop_times(id_route_stop,time,red) VALUES(?,?,?)",
+            cur.executemany("INSERT INTO route_stop_times(id_route_stop,time,color) VALUES(?,?,?)",
                             [(id_route_stop, time.get_time().minute + time.get_time().hour * 60,
-                              time.check_special_flight()) for time in
+                              time.get_color_special_flight()) for time in
                              stop.get_times()]
                             )
             num = num + 1
@@ -134,7 +134,7 @@ class Repository_sqlite(Repository):
         self.connection.execute("CREATE TABLE IF NOT EXISTS routes (snapshot INT,name TEXT,type INT,id INT)")
         self.connection.execute("CREATE TABLE IF NOT EXISTS stops (id_stop TEXT,name TEXT)")
         self.connection.execute("CREATE TABLE IF NOT EXISTS route_stop (ord INT,id_stop INT,id_timetable INT)")
-        self.connection.execute("CREATE TABLE IF NOT EXISTS route_stop_times (id_route_stop INT,time INT,red INT)")
+        self.connection.execute("CREATE TABLE IF NOT EXISTS route_stop_times (id_route_stop INT,time INT,color TEXT)")
 
         self.connection.execute(
             "CREATE TABLE IF NOT EXISTS timetable(data_services INT,date REAL,date_store REAL,route INT,direction INT)")
@@ -164,13 +164,13 @@ def get_and_store_routes_list(repository: Repository, work_time: int, logger: Lo
     return list_routes
 
 
-def calculate_quality(route: Route, route_info: Timetable) -> (str, int, int):
+def calculate_quality(route: Route, route_info: Timetable,start_time=datetime.time(7,0,0),end_time=datetime.time(21,0,0)) -> (str, int, int):
     max_quality = -1
     if route_info:
         timetable = list(route_info)[0]
         prev_time = None
-        for time in timetable.get_times():
-            if datetime.time(7, 0, 0) <= time.get_time() <= datetime.time(21, 0, 0):
+        for time in filter(lambda t: t.get_color_special_flight() is None,sorted(timetable.get_times(),key=lambda t: t.get_time())):
+            if start_time <= time.get_time() <= end_time:
                 if not (prev_time is None):
                     diff = time.get_time().minute + time.get_time().hour * 60 - (prev_time.minute + prev_time.hour * 60)
                     if diff > max_quality:
@@ -230,7 +230,7 @@ def loading(date: datetime.date, work_time: int, direction: int, repository: Rep
         if route_info:
             store_route_new_info(repository, route.get_id_mgt(), route_info, date, direction)
     qualities_pd = pandas.DataFrame(qualities)
-    qualities_pd.to_csv('qualities_' + date.strftime() + '.csv')
+    qualities_pd.to_csv('qualities_' + date.strftime("%Y%m%d") + '.csv')
 
 
 def loading_continue(date: datetime.date, work_time: int, direction: int, repository: Repository):
@@ -255,10 +255,14 @@ def loading_continue(date: datetime.date, work_time: int, direction: int, reposi
 
 
 repository = Repository_sqlite('mosgrortrans_20220114.sqlite')
-loading(datetime.date(2022, 1, 16), 1, 0, repository)
-#routes_info = repository.load_routes_info_by_number(2130, 0)
+loading_continue(datetime.date(2022, 1, 16), 1, 0, repository)
+
+#routes_info = repository.load_routes_info_by_number(2198, 0)
+
 #routes_filtered = list(filter(lambda timetable: timetable['date'].date() == datetime.date(2022, 1, 16), routes_info))
 #print(routes_filtered)
+
+
 
 # routed_data = pd.DataFrame(routes)
 # routed_data.to_csv('routes.csv')

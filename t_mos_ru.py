@@ -63,18 +63,20 @@ class parser_timetable_t_mos_ru(parser_timetable):
                 minutes = re.finditer(r'div10([^>]*)>\s*(\d\d)', minutes_text, re.M + re.S)
                 for minute in minutes:
                     num_minute = int(minute.group(2))
-                    if minute.group(1).find('red') >= 0:
-                        min_red = True
+                    color_start = minute.group(1).find('color: ')
+                    if color_start >= 0:
+                        quote = minute.group(1).find('"', color_start)
+                        min_color = minute.group(1)[color_start + 7:quote]
                     else:
-                        min_red = False
-                    if min_red:
-                        self.printer().print("{}red".format(num_minute), end=" ")
+                        min_color = None
+                    if not (min_color is None):
+                        self.printer().print("{}{}".format(num_minute, min_color), end=" ")
                         pass
                     else:
                         self.printer().print(str(num_minute), end=" ")
                         pass
                     time_flight = time(num_hour, num_minute)
-                    timetable_stop.add_item_timetable(time_flight, min_red)
+                    timetable_stop.add_item_timetable(time_flight, min_color)
                 self.printer().print()
         return result_stops
 

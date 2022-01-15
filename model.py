@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime
+from typing import Optional
 
 
 class Equipment:
@@ -145,13 +146,13 @@ class Timetable_stop_time:
         pass
 
     @abstractmethod
-    def check_special_flight(self) -> bool:
+    def get_color_special_flight(self) -> Optional[str]:
         pass
 
 
 class Timetable_stop_builder:
     @abstractmethod
-    def add_item_timetable(self, time_flight: datetime.time, special_flight_flag: bool):
+    def add_item_timetable(self, time_flight: datetime.time, special_flight: Optional[str]):
         pass
 
     @abstractmethod

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from model import Timetable_stop_time, Timetable_stop, Timetable, Timetable_stop_builder, Timetable_builder, Stop, \
     Stop_builder
@@ -46,22 +47,32 @@ class Stop_builder_impl(Stop_builder):
 
 class Timetable_stop_time_t_mos_ru(Timetable_stop_time):
 
-    def __init__(self, time_flight: datetime.time, flag_special_flight: bool):
+    def __init__(self, time_flight: datetime.time, special_flight: Optional[str]):
         self.get_time = lambda: time_flight
-        self.get_flag_special_flight = lambda: flag_special_flight
+        self.get_special_flight = lambda: special_flight
 
     def get_time(self) -> datetime.time:
         return self.get_time()
 
-    def check_special_flight(self) -> bool:
-        return self.get_flag_special_flight()
+    def get_color_special_flight(self) -> Optional[str]:
+        return self.get_special_flight()
 
     def __eq__(self, other):
         return self.get_time() == other.get_time() and \
-               self.get_flag_special_flight() == other.get_flag_special_flight()
+               self.get_special_flight() == other.get_special_flight()
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        str_time = self.get_time().strftime("%H:%M")
+        color = self.get_color_special_flight()
+        if not (color is None):
+            str_time += " ({})".format(color)
+        return str_time
 
 
 class Timetable_stop_t_mos_ru(Timetable_stop):
@@ -118,8 +129,8 @@ class Timetable_t_mos_ru(Timetable):
 
 class Timetable_stop_builder_t_mos_ru(Timetable_stop_builder):
 
-    def add_item_timetable(self, time_flight: datetime.time, special_flight_flag: bool):
-        self.time_flights.append(Timetable_stop_time_t_mos_ru(time_flight, special_flight_flag))
+    def add_item_timetable(self, time_flight: datetime.time, special_flight: Optional[str]):
+        self.time_flights.append(Timetable_stop_time_t_mos_ru(time_flight, special_flight))
 
     def set_name(self, name: str) -> Timetable_stop_builder:
         self.name = name
