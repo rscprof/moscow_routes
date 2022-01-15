@@ -1,9 +1,14 @@
 import datetime
 import sqlite3
 
+from events.change_name_stop_event import Change_name_stop_event
+from events.new_stop_event import New_stop_event
 from model import Timetable_stop_builder, Route, Equipment, Timetable, Stop_builder, Stop
 from model_impl import Timetable_stop_builder_t_mos_ru, Stop_builder_impl
 from repository import Repository
+from service_locator import Service_locator
+
+#Тут есть и логика репозитория и логика обновления в store_route_info -> надо отделить одно от другого при рефакторинге
 
 
 class Repository_sqlite(Repository):
@@ -63,9 +68,17 @@ class Repository_sqlite(Repository):
         new_stops = []
         stops = [(stop.get_id_stop_t_mos_ru(), stop.get_name()) for stop in route_info]
         old_stops = [(stop.get_id_stop_t_mos_ru(), stop.get_name()) for stop in self.get_all_stops()]
+
+        event_logger = Service_locator.get_instance().get_service('event_logger')
+
         for stop in stops:
             if not (stop in old_stops):
                 # print("new stop: {}", stop)
+                stops_with_same_id = list(filter(lambda s: s[0] == stop[0], old_stops))
+                if len(stops_with_same_id) == 0:
+                    event_logger.register_event(New_stop_event(stop[1]))
+                else:
+                    event_logger.register_event(Change_name_stop_event(stop[1], stops_with_same_id[-1][1]))
                 new_stops.append(stop)
         if new_stops:
             cur.executemany('INSERT INTO stops(id_stop,name) VALUES (?,?)', new_stops)

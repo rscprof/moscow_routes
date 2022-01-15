@@ -1,4 +1,5 @@
 from datetime import datetime
+from itertools import groupby
 from typing import Optional
 
 from model import Timetable_stop_time, Timetable_stop, Timetable, Timetable_stop_builder, Timetable_builder, Stop, \
@@ -99,6 +100,17 @@ class Timetable_stop_t_mos_ru(Timetable_stop):
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        result = "{} (): ".format(self.get_name(), self.get_id_stop_t_mos_ru()) + "\n"
+        time_by_hours = groupby(sorted(self.get_times(), key=lambda t: t.get_time()), key=lambda t: t.get_time().hour)
+        for h in time_by_hours:
+            result += str(h[0])+': ' + \
+                      ' '.join(map(lambda t: str(t.get_time().minute), h[1]))+"\n"
+        return result
 
 
 class Timetable_t_mos_ru(Timetable):

@@ -120,7 +120,7 @@ class Parser_routes_t_mos_ru(Parser_routes):
 
 
 def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logger: Logger,
-              get_route_url: str = 'https://transport.mos.ru/ru/ajax/App/ScheduleController/getRoute',
+              get_route_url: str = 'https://transport.mos.ru/ru/ajax/App/ScheduleController/getRouteNew',
               parser: parser_timetable = parser_timetable_t_mos_ru(builder=Timetable_builder_t_mos_ru())
               ) -> Timetable:
     """Get timetable for route by date and direction
