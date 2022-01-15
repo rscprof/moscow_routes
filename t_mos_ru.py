@@ -55,7 +55,7 @@ class parser_timetable_t_mos_ru(parser_timetable):
             self.printer().print(name_stop)
             hours = re.finditer(r'dt1.*?(\d\d):(.*?)</div>\s*</div>\s*</div>', description, re.M + re.S)
             # result_stops.set_data_services(int(data_services))
-            timetable_stop = result_stops.add_stop(id_stop, name_stop)
+            timetable_stop = result_stops.add_stop(name_stop)
             for hour in hours:
                 num_hour = int(hour.group(1))
                 minutes_text = hour.group(2)

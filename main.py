@@ -28,18 +28,18 @@ from tools import loading
 service_locator = Service_locator.get_instance()
 service_locator.register_service('event_logger', Event_logger_impl())
 
-repository = Repository_sqlite('mosgrortrans_20220114.sqlite')
-loading(datetime.date(2022, 1, 16), 1, 1, repository)
+repository = Repository_sqlite('mosgortrans_20220115.sqlite')
+loading(datetime.date(2022, 1, 16), 1, 0, repository)
 
-#event_logger = Service_locator.get_instance().get_service('event_logger')
+event_logger = Service_locator.get_instance().get_service('event_logger')
 
-#with open("events20220116.txt", 'w') as file:
-#    file.write("\n".join(event_logger.get_descriptions()))
+# with open("events20220116.txt", 'w') as file:
+#     file.write("\n".join(event_logger.get_descriptions()))
 
-#requests.post("https://api.telegram.org/{}/sendMessage".format(get_token_bot()),
-#              params={'chat_id':'@changes_transport_mos',
-#                      'text': "\n".join(event_logger.get_descriptions())
-#                      })
+# requests.post("https://api.telegram.org/{}/sendMessage".format(get_token_bot()),
+#               params={'chat_id':'@changes_transport_mos',
+#                       'text': "\n".join(event_logger.get_descriptions())
+#                       })
 
 
 #routes_info = repository.load_routes_info_by_number(393, 1)

@@ -11,15 +11,12 @@ class Stop_impl(Stop):
     def get_name(self) -> str:
         return self.name
 
-    def get_id_stop_t_mos_ru(self) -> str:
-        return self.id_stop_t_mos_ru
 
     def get_id(self) -> int:
         return self.id
 
-    def __init__(self, id_stop: int, id_stop_t_mos_ru: str, name: str):
+    def __init__(self, id_stop: int, name: str):
         self.id = id_stop
-        self.id_stop_t_mos_ru = id_stop_t_mos_ru
         self.name = name
 
 
@@ -27,23 +24,19 @@ class Stop_builder_impl(Stop_builder):
 
     def __init__(self):
         self.name = None
-        self.id_stop_t_mos_ru = None
         self.id = None
 
     def set_name(self, name: str) -> Stop_builder:
         self.name = name
         return self
 
-    def set_id_stop_t_mos_ru(self, id_stop_t_mos_ru: str) -> Stop_builder:
-        self.id_stop_t_mos_ru = id_stop_t_mos_ru
-        return self
 
     def set_id(self, id_stop: int) -> Stop_builder:
         self.id = id_stop
         return self
 
     def build(self) -> Stop:
-        return Stop_impl(self.id, self.id_stop_t_mos_ru, self.name)
+        return Stop_impl(self.id, self.name)
 
 
 class Timetable_stop_time_t_mos_ru(Timetable_stop_time):
@@ -78,23 +71,19 @@ class Timetable_stop_time_t_mos_ru(Timetable_stop_time):
 
 class Timetable_stop_t_mos_ru(Timetable_stop):
 
-    def __init__(self, name: str, id_stop_t_mos_ru: int, times: [Timetable_stop_time_t_mos_ru]):
+    def __init__(self, name: str, times: [Timetable_stop_time_t_mos_ru]):
         self.get_name = lambda: name
-        self.get_id_stop_t_mos_ru = lambda: id_stop_t_mos_ru
         self.times = lambda: times
 
     def get_name(self) -> str:
         return self.get_name()
 
-    def get_id_stop_t_mos_ru(self) -> int:
-        return self.get_id_stop_t_mos_ru()
 
     def get_times(self):
         return iter(self.times())
 
     def __eq__(self, other):
         return self.get_name() == other.get_name() and \
-               self.get_id_stop_t_mos_ru() == other.get_id_stop_t_mos_ru() and \
                list(sorted(self.get_times(), key=lambda x: x.get_time())) == list(
             sorted(other.get_times(), key=lambda x: x.get_time()))
 
@@ -105,7 +94,7 @@ class Timetable_stop_t_mos_ru(Timetable_stop):
         return self.__str__()
 
     def __str__(self):
-        result = "{} (): ".format(self.get_name(), self.get_id_stop_t_mos_ru()) + "\n"
+        result = "{}: ".format(self.get_name() ) + "\n"
         time_by_hours = groupby(sorted(self.get_times(), key=lambda t: t.get_time()), key=lambda t: t.get_time().hour)
         for h in time_by_hours:
             result += str(h[0])+': ' + \
@@ -148,17 +137,13 @@ class Timetable_stop_builder_t_mos_ru(Timetable_stop_builder):
         self.name = name
         return self
 
-    def set_id_stop_t_mos_ru(self, id_stop_t_mos_ru: str) -> Timetable_stop_builder:
-        self.id_stop_t_mos_ru = id_stop_t_mos_ru
-        return self
 
     def __init__(self):
         self.name = None
-        self.id_stop_t_mos_ru = None
         self.time_flights = []
 
     def build(self) -> Timetable_stop:
-        return Timetable_stop_t_mos_ru(self.name, self.id_stop_t_mos_ru, self.time_flights)
+        return Timetable_stop_t_mos_ru(self.name, self.time_flights)
 
 
 class Timetable_builder_t_mos_ru(Timetable_builder):
@@ -174,8 +159,8 @@ class Timetable_builder_t_mos_ru(Timetable_builder):
         self.date = date
         return self
 
-    def add_stop(self, id_stop_t_mos_ru: str, name: str) -> Timetable_stop_builder:
-        stop_builder = Timetable_stop_builder_t_mos_ru().set_name(name).set_id_stop_t_mos_ru(id_stop_t_mos_ru)
+    def add_stop(self, name: str) -> Timetable_stop_builder:
+        stop_builder = Timetable_stop_builder_t_mos_ru().set_name(name)
         self.stops.append(stop_builder)
         return stop_builder
 

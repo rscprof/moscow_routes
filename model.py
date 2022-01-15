@@ -99,9 +99,6 @@ class Stop:
     def get_name(self) -> str:
         pass
 
-    @abstractmethod
-    def get_id_stop_t_mos_ru(self) -> str:
-        pass
 
     @abstractmethod
     def get_id(self) -> int:
@@ -113,9 +110,7 @@ class Stop_builder:
     def set_name(self, name: str) -> 'Stop_builder':
         pass
 
-    @abstractmethod
-    def set_id_stop_t_mos_ru(self, id_stop_t_mos_ru: str) -> 'Stop_builder':
-        pass
+
 
     @abstractmethod
     def set_id(self, id_stop: int) -> 'Stop_builder':
@@ -131,9 +126,6 @@ class Timetable_stop:
     def get_name(self) -> str:
         pass
 
-    @abstractmethod
-    def get_id_stop_t_mos_ru(self) -> str:
-        pass
 
     @abstractmethod
     def get_times(self):
@@ -163,14 +155,10 @@ class Timetable_stop_builder:
     def set_name(self, name: str) -> 'Timetable_stop_builder':
         pass
 
-    @abstractmethod
-    def set_id_stop_t_mos_ru(self, id_stop_t_mos_ru: str) -> 'Timetable_stop_builder':
-        pass
-
 
 class Timetable_builder:
     @abstractmethod
-    def add_stop(self, id_stop_t_mos_ru: int, name: str) -> Timetable_stop_builder:
+    def add_stop(self, name: str) -> Timetable_stop_builder:
         pass
 
     @abstractmethod

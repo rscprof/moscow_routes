@@ -50,7 +50,7 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
     repository.store_route_info(route.get_id_mgt(), route_info, date, direction)
 
 
-def loading(date: datetime.date, work_time: int, direction: int, repository: Repository):
+def loading(date: datetime.date, work_time: int, direction: int, repository: Repository) -> object:
     routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
     # routes = repository.get_last_snapshot(work_time=1)
 
@@ -60,7 +60,6 @@ def loading(date: datetime.date, work_time: int, direction: int, repository: Rep
         if route_info:
             qualities.append(calculate_quality(route, route_info))
             store_route_new_info(repository, route, route_info, date, direction)
-        break
     qualities_pd = pandas.DataFrame(qualities)
     qualities_pd.to_csv('qualities{}_'.format(direction) + date.strftime("%Y%m%d") + '.csv')
 

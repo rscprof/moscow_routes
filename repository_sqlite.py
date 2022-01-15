@@ -25,17 +25,17 @@ class Repository_sqlite(Repository):
             id_timetable = timetable[2]
             cur2 = self.connection.cursor()
             cur2.execute(
-                "SELECT stops.id_stop,stops.name,route_stop.rowid FROM route_stop INNER JOIN stops ON (stops.rowid=route_stop.id_stop) WHERE id_timetable=? ORDER BY ord",
+                "SELECT stops.name,route_stop.rowid FROM route_stop INNER JOIN stops ON (stops.rowid=route_stop.id_stop) WHERE id_timetable=? ORDER BY ord",
                 (id_timetable,))
 
             stops = []
             for stop in cur2.fetchall():
                 builder = timetable_stop_builder()
                 cur3 = self.connection.cursor()
-                cur3.execute("SELECT time,color FROM route_stop_times where id_route_stop=? ORDER BY time", (stop[2],))
+                cur3.execute("SELECT time,color FROM route_stop_times where id_route_stop=? ORDER BY time", (stop[1],))
                 for time_info in cur3.fetchall():
                     builder.add_item_timetable(datetime.time(time_info[0] // 60, time_info[0] % 60), time_info[1])
-                builder.set_name(stop[1]).set_id_stop_t_mos_ru(stop[0])
+                builder.set_name(stop[0])
                 stops.append(builder.build())
 
             result.append({'date': datetime.datetime.fromtimestamp(timetable[0]),
@@ -66,22 +66,22 @@ class Repository_sqlite(Repository):
                          direction: int) -> None:
         cur = self.connection.cursor()
         new_stops = []
-        stops = [(stop.get_id_stop_t_mos_ru(), stop.get_name()) for stop in route_info]
-        old_stops = [(stop.get_id_stop_t_mos_ru(), stop.get_name()) for stop in self.get_all_stops()]
+        stops = [(stop.get_name(),) for stop in route_info]
+        old_stops = [(stop.get_name(),) for stop in self.get_all_stops()]
 
         event_logger = Service_locator.get_instance().get_service('event_logger')
 
         for stop in stops:
             if not (stop in old_stops):
                 # print("new stop: {}", stop)
-                stops_with_same_id = list(filter(lambda s: s[0] == stop[0], old_stops))
-                if len(stops_with_same_id) == 0:
-                    event_logger.register_event(New_stop_event(stop[1]))
-                else:
-                    event_logger.register_event(Change_name_stop_event(stop[1], stops_with_same_id[-1][1]))
+                #stops_with_same_id = list(filter(lambda s: s[0] == stop[0], old_stops))
+                #if len(stops_with_same_id) == 0:
+                event_logger.register_event(New_stop_event(stop[0]))
+                #else:
+                #event_logger.register_event(Change_name_stop_event(stop[1], stops_with_same_id[-1][1]))
                 new_stops.append(stop)
         if new_stops:
-            cur.executemany('INSERT INTO stops(id_stop,name) VALUES (?,?)', new_stops)
+            cur.executemany('INSERT INTO stops(name) VALUES (?)', new_stops)
             self.connection.commit()
 
         stops = self.get_all_stops()
@@ -97,7 +97,7 @@ class Repository_sqlite(Repository):
 
         num = 1
         for stop in route_info:
-            id_stop = list(filter(lambda x: x.get_id_stop_t_mos_ru() == stop.get_id_stop_t_mos_ru(), stops))[
+            id_stop = list(filter(lambda x: x.get_name() == stop.get_name(), stops))[
                 -1].get_id()
             cur.execute("INSERT INTO route_stop(ord,id_stop,id_timetable) VALUES(?,?,?)", (num, id_stop, id_timetable))
             id_route_stop = cur.lastrowid
@@ -111,14 +111,14 @@ class Repository_sqlite(Repository):
 
     def get_all_stops(self, builder: Stop_builder = Stop_builder_impl()) -> [Stop]:
         cur = self.connection.cursor()
-        cur.execute("SELECT rowid,id_stop,name FROM stops")
-        return [builder.set_id_stop_t_mos_ru(stop[1]).set_id(stop[0]).set_name(stop[2]).build() for stop in
+        cur.execute("SELECT rowid,name FROM stops")
+        return [builder.set_id(stop[0]).set_name(stop[1]).build() for stop in
                 cur.fetchall()]
 
     def create_tables(self):
         self.connection.execute("CREATE TABLE IF NOT EXISTS snapshot_list_routes (datetime REAL,work_time INT)")
         self.connection.execute("CREATE TABLE IF NOT EXISTS routes (snapshot INT,name TEXT,type INT,id INT)")
-        self.connection.execute("CREATE TABLE IF NOT EXISTS stops (id_stop TEXT,name TEXT)")
+        self.connection.execute("CREATE TABLE IF NOT EXISTS stops (name TEXT)")
         self.connection.execute("CREATE TABLE IF NOT EXISTS route_stop (ord INT,id_stop INT,id_timetable INT)")
         self.connection.execute("CREATE TABLE IF NOT EXISTS route_stop_times (id_route_stop INT,time INT,color TEXT)")
 
