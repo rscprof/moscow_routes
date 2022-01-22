@@ -65,7 +65,9 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
     for candidate in routes_info:
         if candidate.get_stops() == prepared_route_info:
             return
-    printer.print("New timetable for route with id {}".format(route_info.get_id_route_t_mos_ru()))
+    printer.print(
+        "New timetable for route with id {} num {} type {}".format(route_info.get_id_route_t_mos_ru(), route.get_name(),
+                                                                   route.get_equipment().to_str()))
 
     event_logger = Service_locator.get_instance().get_service('event_logger')
     event_logger.register_event(New_timetable_event(route, route_info, direction))
@@ -74,10 +76,11 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
 
 
 def loading(date: datetime.date, work_time: int, direction: int, repository: Repository,
-            quality_storage: Quality_storage) -> object:
+            quality_storage: Quality_storage):
     routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
     for route in routes:
         route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+        print("Route {}({}) got from service".format(route.get_name(),route.get_equipment().to_str()))
         if route_info:
             quality_storage.store_quality(route, route_info)
             store_route_new_info(repository, route, route_info, date, direction)
@@ -95,7 +98,7 @@ def loading_continue(date: datetime.date, work_time: int, direction: int, reposi
             print("Route {} load from database".format(route.get_name()))
         else:
             route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
-            print("Route {} load got from service".format(route.get_name()))
+            print("Route {} got from service".format(route.get_name()))
             if route_info:
                 store_route_new_info(repository, route, route_info, date, direction)
         if route_info:
