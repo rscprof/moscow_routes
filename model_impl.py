@@ -71,16 +71,16 @@ class Timetable_stop_time_t_mos_ru(Timetable_stop_time):
 
 class Timetable_stop_t_mos_ru(Timetable_stop):
 
-    def __init__(self, name: str, times: [Timetable_stop_time_t_mos_ru]):
-        self.get_name = lambda: name
-        self.times = lambda: times
+    def __init__(self, name: str, times: list[Timetable_stop_time_t_mos_ru]):
+        self.name = name
+        self.times = times
 
     def get_name(self) -> str:
-        return self.get_name()
+        return self.name
 
 
     def get_times(self):
-        return iter(self.times())
+        return iter(self.times)
 
     def __eq__(self, other):
         return self.get_name() == other.get_name() and \

@@ -1,19 +1,18 @@
 import datetime
 import sqlite3
 
-from events.change_name_stop_event import Change_name_stop_event
-from events.new_stop_event import New_stop_event
-from model import Timetable_stop_builder, Route, Equipment, Timetable, Stop_builder, Stop
-from model_impl import Timetable_stop_builder_t_mos_ru, Stop_builder_impl
+from model import Timetable_stop_builder, Route, Equipment, Stop_builder, Stop, Timetable_builder
+from model_impl import Timetable_stop_builder_t_mos_ru, Stop_builder_impl, Timetable_builder_t_mos_ru
 from repository import Repository
-from service_locator import Service_locator
 
-#Тут есть и логика репозитория и логика обновления в store_route_info -> надо отделить одно от другого при рефакторинге
+
+# Тут есть и логика репозитория и логика обновления в store_route_info -> надо отделить одно от другого при рефакторинге
 
 
 class Repository_sqlite(Repository):
     def load_routes_info_by_number(self, num_route: int, direction: int,
-                                   timetable_stop_builder: Timetable_stop_builder = Timetable_stop_builder_t_mos_ru
+                                   timetable_stop_builder: Timetable_stop_builder = Timetable_stop_builder_t_mos_ru(),
+                                   timetable_builder: Timetable_builder = Timetable_builder_t_mos_ru()
                                    ):
         cur = self.connection.cursor()
         cur.execute("SELECT MAX(rowid) FROM routes WHERE id=?", (num_route,))
@@ -28,20 +27,17 @@ class Repository_sqlite(Repository):
                 "SELECT stops.name,route_stop.rowid FROM route_stop INNER JOIN stops ON (stops.rowid=route_stop.id_stop) WHERE id_timetable=? ORDER BY ord",
                 (id_timetable,))
 
-            stops = []
+            # stops = []
+            timetable_builder = type(timetable_builder)()
+            timetable_builder.set_direction(direction).set_date(datetime.datetime.fromtimestamp(timetable[0]))
             for stop in cur2.fetchall():
-                builder = timetable_stop_builder()
+                builder = timetable_builder.add_stop(stop[0])
                 cur3 = self.connection.cursor()
                 cur3.execute("SELECT time,color FROM route_stop_times where id_route_stop=? ORDER BY time", (stop[1],))
                 for time_info in cur3.fetchall():
                     builder.add_item_timetable(datetime.time(time_info[0] // 60, time_info[0] % 60), time_info[1])
-                builder.set_name(stop[0])
-                stops.append(builder.build())
 
-            result.append({'date': datetime.datetime.fromtimestamp(timetable[0]),
-                           'date_store': datetime.datetime.fromtimestamp(timetable[1]),
-                           'stops': stops
-                           })
+            result.append(timetable_builder.build())
 
         return result
 
@@ -62,39 +58,22 @@ class Repository_sqlite(Repository):
 
         return [Route(route[2], Equipment.by_number(route[1]), route[0]) for route in cur.fetchall()]
 
-    def store_route_info(self, num_route: str, route_info: Timetable, date: datetime.date,
-                         direction: int) -> None:
+    def store_routes(self, route_names: list[str]):
         cur = self.connection.cursor()
-        new_stops = []
-        stops = [(stop.get_name(),) for stop in route_info]
-        old_stops = [(stop.get_name(),) for stop in self.get_all_stops()]
+        cur.executemany('INSERT INTO stops(name) VALUES (?)', route_names)
+        self.connection.commit()
 
-        event_logger = Service_locator.get_instance().get_service('event_logger')
 
-        for stop in stops:
-            if not (stop in old_stops):
-                # print("new stop: {}", stop)
-                #stops_with_same_id = list(filter(lambda s: s[0] == stop[0], old_stops))
-                #if len(stops_with_same_id) == 0:
-                event_logger.register_event(New_stop_event(stop[0]))
-                #else:
-                #event_logger.register_event(Change_name_stop_event(stop[1], stops_with_same_id[-1][1]))
-                new_stops.append(stop)
-        if new_stops:
-            cur.executemany('INSERT INTO stops(name) VALUES (?)', new_stops)
-            self.connection.commit()
-
+    def store_route_info(self, date, direction, num_route, route_info):
+        cur = self.connection.cursor()
         stops = self.get_all_stops()
-
         cur.execute("SELECT MAX(rowid) FROM routes WHERE id=?", (num_route,))
         id_route = cur.fetchone()[0]
-
         cur.execute("INSERT INTO timetable(date,date_store,route,direction) VALUES (?,?,?,?)",
                     (
                         datetime.datetime.combine(date, datetime.time(0, 0, 0)).timestamp(),
                         datetime.datetime.now().timestamp(), id_route, direction))
         id_timetable = cur.lastrowid
-
         num = 1
         for stop in route_info:
             id_stop = list(filter(lambda x: x.get_name() == stop.get_name(), stops))[

@@ -135,9 +135,9 @@ def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logge
     try:
         response = requests.get(get_route_url,
                                 params={
+                                    'mgt_schedule[isNight]':'',
                                     'mgt_schedule[date]': date.strftime("%d.%m.%Y"),
                                     'mgt_schedule[route]': id_route_t_mos_ru,
-                                    'mgt_schedule[page]': '',
                                     'mgt_schedule[direction]': direction,
                                 }
                                 )
@@ -172,30 +172,38 @@ def get_list_routes(work_time: int, direction: int, logger: Logger,
     """
     if parser is None:
         parser = Parser_routes_t_mos_ru(logger)
-    try:
-        page = 1
-        result_routes = []
-        while True:
-            response = requests.get(get_routes_url,
-                                    params={
-                                        'mgt_schedule[search]': '',
-                                        'mgt_schedule[filters]': '',
-                                        'mgt_schedule[work_time]': work_time,
-                                        'mgt_schedule[page]': page,
-                                        'mgt_schedule[direction]': direction,
-                                    }
-                                    )
-            if response.status_code == 200:
-                logger.print("Get page #{}".format(page))
-                routes = parser.parse(response.text)
-                result_routes += routes
-                if not routes:
-                    break
-            else:
-                logger.error("Error status: {}".format(response.status_code))
-            page = page + 1
-    except requests.exceptions.RequestException as e:
-        logger.error("Error " + e.strerror)
-        result_routes = None
+    page = 1
+    result_routes = []
+    finish = False
+    while not finish:
+        finish = False
+        repeat = True
+        while repeat:
+            repeat = False
+            try:
+                response = requests.get(get_routes_url,
+                                        params={
+                                            'mgt_schedule[search]': '',
+                                            'mgt_schedule[isNight]': '',
+                                            'mgt_schedule[filters]': '',
+                                            'mgt_schedule[work_time]': work_time,
+                                            'page': page,
+                                            'mgt_schedule[direction]': direction,
+                                        }
+                                        # , headers={'Cookie': "_ym_d=1637468102; _ym_uid=1637468102592825648; mos_id=rBEAAmGaFNawBwAOHRgWAgA=; _ga=GA1.2.1733238845.1637487830; uxs_uid=147e2110-500d-11ec-a7cb-8bb8b12c3186; KFP_DID=ee285837-cd1f-0a9b-c8a2-9cef6a4ee333; _ym_isad=2; _ym_visorc=w"}
+                                        )
+                if response.status_code == 200:
+                    logger.print("Get page #{}".format(page))
+                    routes = parser.parse(response.text)
+                    result_routes += routes
+                    if not routes:
+                        finish = True
+                else:
+                    logger.error("Error status: {}".format(response.status_code))
+                    finish = True
+                page = page + 1
+            except requests.exceptions.RequestException as e:
+                logger.error("Error " + str(e.strerror))
+                repeat = True
 
     return result_routes

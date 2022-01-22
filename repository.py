@@ -23,7 +23,7 @@ class Repository:
         pass
 
     @abstractmethod
-    def store_route_info(self, num_route: str, route_info: Timetable, date: datetime.date,
-                         direction: int) -> None:
+    def store_route_info_with_adding_stops(self, num_route: str, route_info: Timetable, date: datetime.date,
+                                           direction: int) -> None:
         pass
 
