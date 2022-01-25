@@ -103,6 +103,13 @@ class Repository_sqlite(Repository):
 
         self.connection.execute(
             "CREATE TABLE IF NOT EXISTS timetable(data_services INT,date REAL,date_store REAL,route INT,direction INT)")
+        self.connection.execute(
+            "create index if not exists timetable_index on route_stop(id_timetable);")
+        self.connection.execute(
+            "create index if not exists times_index on route_stop_times(id_route_stop);")
+        self.connection.execute(
+            "create index if not exists route_index on timetable(route,direction);")
+
 
     def __init__(self, filename="mosgortrans.sqlite"):
         self.connection = sqlite3.connect(filename)
