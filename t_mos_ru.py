@@ -135,7 +135,7 @@ def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logge
     try:
         response = requests.get(get_route_url,
                                 params={
-                                    'mgt_schedule[isNight]':'',
+                                    'mgt_schedule[isNight]': '',
                                     'mgt_schedule[date]': date.strftime("%d.%m.%Y"),
                                     'mgt_schedule[route]': id_route_t_mos_ru,
                                     'mgt_schedule[direction]': direction,

@@ -68,6 +68,40 @@ class Route:
         return hash((self.get_id_mgt(), self.get_equipment(), self.get_name()))
 
 
+class Stop:
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_id(self) -> int:
+        pass
+
+
+class Stop_builder:
+    @abstractmethod
+    def set_name(self, name: str) -> 'Stop_builder':
+        pass
+
+    @abstractmethod
+    def set_id(self, id_stop: int) -> 'Stop_builder':
+        pass
+
+    @abstractmethod
+    def build(self) -> Stop:
+        pass
+
+
+class Timetable_stop:
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_times(self):
+        pass
+
+
 class Timetable:
     @abstractmethod
     def get_data_services(self) -> int:
@@ -93,42 +127,12 @@ class Timetable:
     def get_date(self) -> datetime.date:
         pass
 
-
-class Stop:
     @abstractmethod
-    def get_name(self) -> str:
-        pass
-
-
-    @abstractmethod
-    def get_id(self) -> int:
-        pass
-
-
-class Stop_builder:
-    @abstractmethod
-    def set_name(self, name: str) -> 'Stop_builder':
-        pass
-
-
-
-    @abstractmethod
-    def set_id(self, id_stop: int) -> 'Stop_builder':
+    def get_id_timetable(self) -> Optional[int]:
         pass
 
     @abstractmethod
-    def build(self) -> Stop:
-        pass
-
-
-class Timetable_stop:
-    @abstractmethod
-    def get_name(self) -> str:
-        pass
-
-
-    @abstractmethod
-    def get_times(self):
+    def get_stops(self) -> list[Timetable_stop]:
         pass
 
 
@@ -179,4 +183,8 @@ class Timetable_builder:
 
     @abstractmethod
     def set_date(self, date: datetime.date) -> 'Timetable_builder':
+        pass
+
+    @abstractmethod
+    def set_id_timetable(self, id_timetable: int) -> 'Timetable_builder':
         pass

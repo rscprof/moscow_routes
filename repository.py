@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from datetime import datetime
+from typing import Optional, Tuple
 
-from model import Stop_builder, Stop, Route, Timetable
-from model_impl import Stop_builder_impl
+from model import Stop_builder, Stop, Route, Timetable, Timetable_stop_builder, Timetable_builder
+from model_impl import Stop_builder_impl, Timetable_stop_builder_t_mos_ru, Timetable_builder_t_mos_ru
 
 
 class Repository:
@@ -19,11 +20,23 @@ class Repository:
         pass
 
     @abstractmethod
-    def load_routes_info_by_number(self, num_route, direction):
+    def load_routes_info_by_number(self, num_route: int, direction: int,
+                                   timetable_stop_builder: Timetable_stop_builder = Timetable_stop_builder_t_mos_ru(),
+                                   timetable_builder: Timetable_builder = Timetable_builder_t_mos_ru()
+                                   ) -> list[Timetable]:
         pass
 
     @abstractmethod
-    def store_route_info_with_adding_stops(self, num_route: str, route_info: Timetable, date: datetime.date,
-                                           direction: int) -> None:
+    def store_route_timetable_date(self, id_route: int, direction: int, date: datetime.date, id_timetable: int) -> None:
         pass
 
+    @abstractmethod
+    def store_routes(self, route_names: list[Tuple[str]]):
+        pass
+
+    @abstractmethod
+    def load_routes_info_by_number_and_date(self, num_route: int, direction: int, date: datetime.date,
+                                            timetable_builder: Timetable_builder = Timetable_builder_t_mos_ru()
+                                            ) -> \
+            Optional[Timetable]:
+        pass

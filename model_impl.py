@@ -104,13 +104,20 @@ class Timetable_t_mos_ru(Timetable):
     def get_date(self) -> datetime.date:
         return self.get_date()
 
+    def get_stops(self) -> list[Timetable_stop]:
+        return self.stops
+
     def __init__(self, data_services: int, id_route_t_mos_ru: str, direction: int, date: datetime.date,
-                 stops: [Timetable_stop_t_mos_ru]):
+                 stops: list[Timetable_stop_t_mos_ru], id_timetable: Optional[int] = None):
         self.get_data_services = lambda: data_services
         self.get_id_route_t_mos_ru = lambda: id_route_t_mos_ru
         self.get_direction = lambda: direction
-        self.get_stops = lambda: stops
+        self.stops = stops
         self.get_date = lambda: date
+        self.id_timetable = id_timetable
+
+    def get_id_timetable(self) -> Optional[int]:
+        return self.id_timetable
 
     def get_direction(self) -> int:
         return self.get_direction()
@@ -153,11 +160,16 @@ class Timetable_stop_builder_t_mos_ru(Timetable_stop_builder):
 
 class Timetable_builder_t_mos_ru(Timetable_builder):
 
+    def set_id_timetable(self, id_timetable: int) -> 'Timetable_builder':
+        self.id_timetable = id_timetable
+        return self
+
     def __init__(self):
         self.date = None
         self.direction = None
         self.id_route_t_mos_ru = None
         self.data_services = None
+        self.id_timetable = None
         self.stops = []
 
     def set_date(self, date: datetime.date) -> Timetable_builder:
@@ -179,7 +191,8 @@ class Timetable_builder_t_mos_ru(Timetable_builder):
                                   self.direction,
                                   self.date,
                                   list(map(lambda stop_builder: stop_builder.build(),
-                                           self.stops)))
+                                           self.stops)),
+                                  self.id_timetable)
 
     def set_id_route_t_mos_ru(self, id_route_t_mos_ru: str) -> Timetable_builder:
         self.id_route_t_mos_ru = id_route_t_mos_ru

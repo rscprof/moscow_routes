@@ -25,7 +25,8 @@ class Quality_storage:
                 {'from': datetime.time(7, 0, 0), 'to': datetime.time(21, 0, 0), 'description': '7-21', },
                 {'from': datetime.time(7, 0, 0), 'to': datetime.time(10, 0, 0), 'description': '7-10', },
                 {'from': datetime.time(16, 0, 0), 'to': datetime.time(20, 0, 0), 'description': '16-20', },
-                {'type': 'set', 'description': 'range magistral'},
+                {'type': 'set', 'interval': 10, 'description': 'range magistral'},
+                {'type': 'set', 'interval': 4, 'description': 'range <=4 min'},
                 {'type': 'count', 'description': 'count'}
             ]
         self.segments = segments
@@ -38,14 +39,14 @@ class Quality_storage:
         for segment in self.segments:
             if 'type' in segment:
                 if segment['type'] == 'set':
-                    result = calculate_quality_set(route_info)
+                    result = calculate_quality_set(route_info, segment['interval'])
                     format_result = ', '.join(
                         map(lambda r: "{} - {}".format(r[0].strftime("%H:%M"), r[1].strftime("%H:%M")), result))
                     quality_route.append(format_result)
                 elif segment['type'] == 'count':
                     result = calculate_quality_count(route_info)
                     format_result = ', '.join(
-                        map(lambda r: str(r[1]) if r[0]=='' else "{}: {}".format(r[0], str(r[1])), result))
+                        map(lambda r: str(r[1]) if r[0] == '' else "{}: {}".format(r[0], str(r[1])), result))
                     quality_route.append(format_result)
 
             else:
@@ -59,7 +60,8 @@ class Quality_storage:
 
 def calculate_quality_count(route_info: Timetable) -> list[tuple[str, int]]:
     # Calculate quality by count of exits
-    timetable_last_stop = sorted(list(route_info)[-1].get_times(), key=lambda time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
+    timetable_last_stop = sorted(list(route_info)[-1].get_times(), key=lambda
+        time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
     groups = groupby(timetable_last_stop, key=lambda time: time.get_color_special_flight())
     return list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
 
@@ -131,6 +133,7 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
 
     for candidate in routes_info:
         if candidate.get_stops() == prepared_route_info:
+            repository.store_route_timetable_date(route.get_id_mgt(), direction, date, candidate.get_id_timetable())
             return
     printer.print(
         "New timetable for route with id {} num {} type {}".format(route_info.get_id_route_t_mos_ru(), route.get_name(),
@@ -158,10 +161,11 @@ def loading_continue(date: datetime.date, work_time: int, direction: int, reposi
     routes = repository.get_last_snapshot(work_time=work_time)
 
     for route in routes:
-        routes_info = repository.load_routes_info_by_number(route.get_id_mgt(), direction)
-        routes_filtered = list(filter(lambda timetable: timetable.get_date().date() == date, routes_info))
-        if len(routes_filtered) > 0:
-            route_info = routes_filtered[0]
+        route_info = repository.load_routes_info_by_number_and_date(route.get_id_mgt(), direction, date)
+        # routes_info = repository.load_routes_info_by_number(route.get_id_mgt(), direction)
+        # routes_filtered = list(filter(lambda timetable: timetable.get_date().date() == date, routes_info))
+        if not (route_info is None):
+            # route_info = routes_filtered[0]
             print("Route {} load from database".format(route.get_name()))
         else:
             route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
@@ -194,7 +198,7 @@ def get_and_store_routes_list(repository: Repository, work_time: int, logger: Lo
     return list_routes
 
 
-def store_route_info_with_adding_stops(repository: Repository, num_route: str, route_info: Timetable,
+def store_route_info_with_adding_stops(repository: Repository, num_route: int, route_info: Timetable,
                                        date: datetime.date,
                                        direction: int) -> None:
     new_stops = []
@@ -210,4 +214,5 @@ def store_route_info_with_adding_stops(repository: Repository, num_route: str, r
     if new_stops:
         repository.store_routes(new_stops)
 
-    repository.store_route_info(date, direction, num_route, route_info)
+    id_timetable = repository.store_route_info(date, direction, num_route, route_info)
+    repository.store_route_timetable_date(num_route, direction, date, id_timetable)
