@@ -1,4 +1,5 @@
 import datetime
+from abc import abstractmethod
 from itertools import groupby
 
 import pandas
@@ -17,112 +18,149 @@ from service_locator import Service_locator
 from t_mos_ru import get_route, get_list_routes
 
 
+class Quality_calculator:
+    @abstractmethod
+    def get_descriptions(self) -> list[str]:
+        pass
+
+    @abstractmethod
+    def calculate_qualities(self, timetable: Timetable) -> list[str]:
+        pass
+
+
+class Quality_calculator_max_interval(Quality_calculator):
+
+    def __init__(self, start: datetime.time, end: datetime.time):
+        self.start = start
+        self.end = end
+
+    def get_descriptions(self) -> list[str]:
+        return ['{}-{}'.format(self.start.strftime('%H:%M'), self.end.strftime('%H:%M'))]
+
+    def calculate_qualities(self, timetable: Timetable) -> list[str]:
+        return [str(self.calculate_quality(timetable, self.start, self.end))]
+
+    @staticmethod
+    def calculate_quality(route_info: Timetable, start_time=datetime.time(7, 0, 0),
+                          end_time=datetime.time(21, 0, 0)) -> int:
+        max_quality = -1
+        for timetable in route_info:
+            prev_time = None
+            for time in sorted(timetable.get_times(), key=lambda t: t.get_time()):
+                if start_time <= time.get_time() <= end_time:
+                    if not (prev_time is None):
+                        diff = time.get_time().minute + time.get_time().hour * 60 - (
+                                prev_time.minute + prev_time.hour * 60)
+                        if diff > max_quality:
+                            max_quality = diff
+                    prev_time = time.get_time()
+        return max_quality
+
+
+class Quality_calculator_count(Quality_calculator):
+
+    def get_descriptions(self) -> list[str]:
+        return ['Count exits']
+
+    def calculate_qualities(self, timetable: Timetable) -> list[str]:
+        result = self.calculate_quality_count(timetable)
+        format_result = ', '.join(
+            map(lambda r: str(r[1]) if r[0] == '' else "{}: {}".format(r[0], str(r[1])), result))
+        return [format_result]
+
+    @staticmethod
+    def calculate_quality_count(route_info: Timetable) -> list[tuple[str, int]]:
+        # Calculate quality by count of exits
+        timetable_last_stop = sorted(list(route_info)[-1].get_times(), key=lambda
+            time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
+        groups = groupby(timetable_last_stop, key=lambda time: time.get_color_special_flight())
+        return list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
+
+
+class Quality_calculator_set_good_quality(Quality_calculator):
+
+    def __init__(self, interval):
+        self.interval = interval
+
+    def get_descriptions(self) -> list[str]:
+        return ['range <= {} min'.format(self.interval), 'len ranges <= {} min'.format(self.interval)]
+
+    def calculate_qualities(self, timetable: Timetable) -> list[str]:
+        result = self.calculate_quality_set(timetable, self.interval)
+        format_result = ', '.join(
+            map(lambda r: "{} - {}".format(r[0].strftime("%H:%M"), r[1].strftime("%H:%M")), result))
+        return [format_result, sum(map(lambda r: r[1].hour * 60 + r[1].minute - r[0].hour * 60 - r[0].minute, result))]
+
+    @staticmethod
+    def calculate_quality_set(route_info: Timetable, max_interval=10) -> list[tuple[datetime.time, datetime.time]]:
+        # Calculate time period when route has intervals better that given minutes.
+        result = None
+        for timetable in route_info:
+            prev_time = None
+            start_good_intervals = None
+            result_current_stop = []
+            for time in sorted(timetable.get_times(), key=lambda t: t.get_time()):
+                # for one stop we calculate set of ranges where route has interval no more than max_interval
+                if not (prev_time is None):
+                    diff = time.get_time().minute + time.get_time().hour * 60 - (prev_time.minute + prev_time.hour * 60)
+                    if diff > max_interval:
+                        if not (start_good_intervals is None):
+                            result_current_stop.append((start_good_intervals, prev_time,))
+                            start_good_intervals = None
+                    else:
+                        if start_good_intervals is None:
+                            start_good_intervals = prev_time
+                prev_time = time.get_time()
+            if not (start_good_intervals is None):
+                result_current_stop.append((start_good_intervals, prev_time,))
+            # result_current_stop is list of tuples that consists of start and end range of good intervals
+            # now we have to find intersection
+            if result is None:
+                result = result_current_stop
+            else:
+                # intersection
+                intersection = []
+                for (start_interval, end_interval) in result:
+                    for (start_current_interval, end_current_interval) in result_current_stop:
+                        if start_interval <= start_current_interval < end_interval:
+                            if end_current_interval <= end_interval:
+                                intersection.append((start_current_interval, end_current_interval))
+                            else:
+                                intersection.append((start_current_interval, end_interval))
+                        if start_current_interval < start_interval < end_current_interval:
+                            if end_interval <= end_current_interval:
+                                intersection.append((start_interval, end_interval,))
+                            else:
+                                intersection.append((start_interval, end_current_interval))
+                result = intersection
+        return result
+
+
 class Quality_storage:
     def __init__(self, segments=None
                  ):
         if segments is None:
-            segments = [
-                {'from': datetime.time(7, 0, 0), 'to': datetime.time(21, 0, 0), 'description': '7-21', },
-                {'from': datetime.time(7, 0, 0), 'to': datetime.time(10, 0, 0), 'description': '7-10', },
-                {'from': datetime.time(16, 0, 0), 'to': datetime.time(20, 0, 0), 'description': '16-20', },
-                {'type': 'set', 'interval': 10, 'description': 'range magistral'},
-                {'type': 'set', 'interval': 4, 'description': 'range <=4 min'},
-                {'type': 'count', 'description': 'count'}
-            ]
+            segments = [Quality_calculator_max_interval(datetime.time(7, 0, 0), datetime.time(21, 0, 0)),
+                        Quality_calculator_max_interval(datetime.time(7, 0, 0), datetime.time(10, 0, 0)),
+                        Quality_calculator_max_interval(datetime.time(16, 0, 0), datetime.time(20, 0, 0)),
+                        Quality_calculator_set_good_quality(10),
+                        Quality_calculator_set_good_quality(4),
+                        Quality_calculator_count()
+                        ]
         self.segments = segments
         self.data = [['number', 'type', 'direction']]
         for segment in self.segments:
-            self.data[0].append(segment['description'])
+            self.data[0] += segment.get_descriptions()
 
     def store_quality(self, route: Route, route_info: Timetable):
         quality_route = [route.get_name(), route.get_equipment().to_number(), route_info.get_direction()]
         for segment in self.segments:
-            if 'type' in segment:
-                if segment['type'] == 'set':
-                    result = calculate_quality_set(route_info, segment['interval'])
-                    format_result = ', '.join(
-                        map(lambda r: "{} - {}".format(r[0].strftime("%H:%M"), r[1].strftime("%H:%M")), result))
-                    quality_route.append(format_result)
-                elif segment['type'] == 'count':
-                    result = calculate_quality_count(route_info)
-                    format_result = ', '.join(
-                        map(lambda r: str(r[1]) if r[0] == '' else "{}: {}".format(r[0], str(r[1])), result))
-                    quality_route.append(format_result)
-
-            else:
-                quality_route.append(calculate_quality(route_info, segment['from'], segment['to']))
+            quality_route += segment.calculate_qualities(route_info)
         self.data.append(quality_route)
 
     def save(self, filename: str):
         qualities_pd = pandas.DataFrame(self.data)
         qualities_pd.to_csv(filename, index=False, header=False)
-
-
-def calculate_quality_count(route_info: Timetable) -> list[tuple[str, int]]:
-    # Calculate quality by count of exits
-    timetable_last_stop = sorted(list(route_info)[-1].get_times(), key=lambda
-        time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
-    groups = groupby(timetable_last_stop, key=lambda time: time.get_color_special_flight())
-    return list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
-
-
-def calculate_quality_set(route_info: Timetable, max_interval=10) -> list[tuple[datetime.time, datetime.time]]:
-    # Calculate time period when route has intervals better that given minutes.
-    result = None
-    for timetable in route_info:
-        prev_time = None
-        start_good_intervals = None
-        result_current_stop = []
-        for time in sorted(timetable.get_times(), key=lambda t: t.get_time()):
-            # for one stop we calculate set of ranges where route has interval no more than max_interval
-            if not (prev_time is None):
-                diff = time.get_time().minute + time.get_time().hour * 60 - (prev_time.minute + prev_time.hour * 60)
-                if diff > max_interval:
-                    if not (start_good_intervals is None):
-                        result_current_stop.append((start_good_intervals, prev_time,))
-                        start_good_intervals = None
-                else:
-                    if start_good_intervals is None:
-                        start_good_intervals = prev_time
-            prev_time = time.get_time()
-        if not (start_good_intervals is None):
-            result_current_stop.append((start_good_intervals, prev_time,))
-        # result_current_stop is list of tuples that consists of start and end range of good intervals
-        # now we have to find intersection
-        if result is None:
-            result = result_current_stop
-        else:
-            # intersection
-            intersection = []
-            for (start_interval, end_interval) in result:
-                for (start_current_interval, end_current_interval) in result_current_stop:
-                    if start_interval <= start_current_interval < end_interval:
-                        if end_current_interval <= end_interval:
-                            intersection.append((start_current_interval, end_current_interval))
-                        else:
-                            intersection.append((start_current_interval, end_interval))
-                    if start_current_interval < start_interval < end_current_interval:
-                        if end_interval <= end_current_interval:
-                            intersection.append((start_interval, end_interval,))
-                        else:
-                            intersection.append((start_interval, end_current_interval))
-            result = intersection
-    return result
-
-
-def calculate_quality(route_info: Timetable, start_time=datetime.time(7, 0, 0),
-                      end_time=datetime.time(21, 0, 0)) -> int:
-    max_quality = -1
-    for timetable in route_info:
-        prev_time = None
-        for time in sorted(timetable.get_times(), key=lambda t: t.get_time()):
-            if start_time <= time.get_time() <= end_time:
-                if not (prev_time is None):
-                    diff = time.get_time().minute + time.get_time().hour * 60 - (prev_time.minute + prev_time.hour * 60)
-                    if diff > max_quality:
-                        max_quality = diff
-                prev_time = time.get_time()
-    return max_quality
 
 
 def store_route_new_info(repository: Repository, route: Route, route_info: Timetable, date: datetime.date,
