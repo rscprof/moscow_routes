@@ -41,7 +41,8 @@ class Repository_sqlite(Repository):
 
         return result
 
-    def create_snapshot_routes(self, routes: list[Route], work_time: int, datetime_create=datetime.datetime.now()):
+    def create_snapshot_routes(self, routes: list[Route], work_time: int, datetime_create=datetime.datetime.now()) -> \
+    list[Route]:
         now = datetime_create.timestamp()
         cur = self.connection.cursor()
         cur.execute("INSERT INTO snapshot_list_routes(datetime,work_time) VALUES(?,?)", (now, work_time,))
@@ -62,7 +63,6 @@ class Repository_sqlite(Repository):
         cur = self.connection.cursor()
         cur.executemany('INSERT INTO stops(name) VALUES (?)', route_names)
         self.connection.commit()
-
 
     def store_route_info(self, date, direction, num_route, route_info):
         cur = self.connection.cursor()
@@ -109,7 +109,6 @@ class Repository_sqlite(Repository):
             "create index if not exists times_index on route_stop_times(id_route_stop);")
         self.connection.execute(
             "create index if not exists route_index on timetable(route,direction);")
-
 
     def __init__(self, filename="mosgortrans.sqlite"):
         self.connection = sqlite3.connect(filename)

@@ -11,7 +11,6 @@ class Stop_impl(Stop):
     def get_name(self) -> str:
         return self.name
 
-
     def get_id(self) -> int:
         return self.id
 
@@ -29,7 +28,6 @@ class Stop_builder_impl(Stop_builder):
     def set_name(self, name: str) -> Stop_builder:
         self.name = name
         return self
-
 
     def set_id(self, id_stop: int) -> Stop_builder:
         self.id = id_stop
@@ -78,7 +76,6 @@ class Timetable_stop_t_mos_ru(Timetable_stop):
     def get_name(self) -> str:
         return self.name
 
-
     def get_times(self):
         return iter(self.times)
 
@@ -94,11 +91,11 @@ class Timetable_stop_t_mos_ru(Timetable_stop):
         return self.__str__()
 
     def __str__(self):
-        result = "{}: ".format(self.get_name() ) + "\n"
+        result = "{}: ".format(self.get_name()) + "\n"
         time_by_hours = groupby(sorted(self.get_times(), key=lambda t: t.get_time()), key=lambda t: t.get_time().hour)
         for h in time_by_hours:
-            result += str(h[0])+': ' + \
-                      ' '.join(map(lambda t: str(t.get_time().minute), h[1]))+"\n"
+            result += str(h[0]) + ': ' + \
+                      ' '.join(map(lambda t: str(t.get_time().minute), h[1])) + "\n"
         return result
 
 
@@ -127,6 +124,15 @@ class Timetable_t_mos_ru(Timetable):
     def __iter__(self):
         return iter(self.get_stops())
 
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        result = "Route with id={}, direction = {}, date={}: ".format(self.get_id_route_t_mos_ru(),
+                                                                      self.get_direction(), self.get_date()) + "\n"
+        result += ''.join(str(self.get_stops()))
+        return result
+
 
 class Timetable_stop_builder_t_mos_ru(Timetable_stop_builder):
 
@@ -136,7 +142,6 @@ class Timetable_stop_builder_t_mos_ru(Timetable_stop_builder):
     def set_name(self, name: str) -> Timetable_stop_builder:
         self.name = name
         return self
-
 
     def __init__(self):
         self.name = None
