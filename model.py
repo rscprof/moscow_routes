@@ -135,6 +135,11 @@ class Timetable:
     def get_stops(self) -> list[Timetable_stop]:
         pass
 
+    @abstractmethod
+    def drop_stop(self,num:int) -> 'Timetable':
+        #Create timetable without one stop
+        pass
+
 
 class Timetable_stop_time:
     @abstractmethod

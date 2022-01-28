@@ -38,7 +38,20 @@ class Quality_calculator_max_interval(Quality_calculator):
         return ['{}-{}'.format(self.start.strftime('%H:%M'), self.end.strftime('%H:%M'))]
 
     def calculate_qualities(self, timetable: Timetable) -> list[str]:
-        return [str(self.calculate_quality(timetable, self.start, self.end))]
+        # We use regularization to drop one stop with strange timetable
+        count_stops = len(timetable.get_stops())
+        results = []
+        if count_stops > 2:
+            for num in range(0, count_stops):
+                results.append(self.calculate_quality(timetable.drop_stop(num), self.start, self.end))
+        else:
+            results = [self.calculate_quality(timetable, self.start, self.end)]
+        filtered = list(filter(lambda x: x != -1, results))
+        if len(filtered) > 0:
+            result = min(filtered)
+        else:
+            result = -1
+        return [str(result)]
 
     @staticmethod
     def calculate_quality(route_info: Timetable, start_time=datetime.time(7, 0, 0),
@@ -63,17 +76,28 @@ class Quality_calculator_count(Quality_calculator):
         return ['Count exits']
 
     def calculate_qualities(self, timetable: Timetable) -> list[str]:
-        result = self.calculate_quality_count(timetable)
+        # We use regularization to drop one stop with strange timetable
+        count_stops = len(timetable.get_stops())
+        results = []
+        if count_stops > 2:
+            for num in range(0, count_stops):
+                results.append(self.calculate_quality_count(timetable.drop_stop(num)))
+        else:
+            results = [self.calculate_quality_count(timetable)]
+        result = max(results, key=lambda exits: sum(map(lambda r: r[1], exits)))
         format_result = ', '.join(
             map(lambda r: str(r[1]) if r[0] == '' else "{}: {}".format(r[0], str(r[1])), result))
         return [format_result]
 
     @staticmethod
     def calculate_quality_count(route_info: Timetable) -> list[tuple[str, int]]:
+        # Search min of exits
+        timetable_worse = min(route_info, key=lambda t: len(list(t.get_times())))
+
         # Calculate quality by count of exits
-        timetable_last_stop = sorted(list(route_info)[-1].get_times(), key=lambda
+        times_last_stop = sorted(timetable_worse.get_times(), key=lambda
             time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
-        groups = groupby(timetable_last_stop, key=lambda time: time.get_color_special_flight())
+        groups = groupby(times_last_stop, key=lambda time: time.get_color_special_flight())
         return list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
 
 
@@ -86,7 +110,15 @@ class Quality_calculator_set_good_quality(Quality_calculator):
         return ['range <= {} min'.format(self.interval), 'len ranges <= {} min'.format(self.interval)]
 
     def calculate_qualities(self, timetable: Timetable) -> list[str]:
-        result = self.calculate_quality_set(timetable, self.interval)
+        count_stops = len(timetable.get_stops())
+        results = []
+        if count_stops > 2:
+            for num in range(0, count_stops):
+                results.append(self.calculate_quality_set(timetable.drop_stop(num), self.interval))
+        else:
+            results = [self.calculate_quality_set(timetable, self.interval)]
+        result = max(results, key=lambda res: sum(
+            map(lambda r: r[1].hour * 60 + r[1].minute - r[0].hour * 60 - r[0].minute, res)))
         format_result = ', '.join(
             map(lambda r: "{} - {}".format(r[0].strftime("%H:%M"), r[1].strftime("%H:%M")), result))
         return [format_result, sum(map(lambda r: r[1].hour * 60 + r[1].minute - r[0].hour * 60 - r[0].minute, result))]
@@ -145,6 +177,8 @@ class Quality_storage:
                         Quality_calculator_max_interval(datetime.time(16, 0, 0), datetime.time(20, 0, 0)),
                         Quality_calculator_set_good_quality(10),
                         Quality_calculator_set_good_quality(4),
+                        Quality_calculator_set_good_quality(15),
+                        Quality_calculator_set_good_quality(30),
                         Quality_calculator_count()
                         ]
         self.segments = segments

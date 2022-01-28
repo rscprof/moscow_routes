@@ -4,8 +4,9 @@ from model import Timetable, Route
 
 class New_timetable_event(Event):
     def get_description(self, iso_lang="ru") -> str:
-        from tools import calculate_quality
-        quality = calculate_quality(self.timetable)
+        from tools import Quality_calculator_max_interval
+        quality_calculator = Quality_calculator_max_interval()
+        quality = quality_calculator.calculate_qualities(self.timetable)[0]
         name_type_in_russian = ['автобус', 'трамвай', 'троллейбус']
         return "Обнаружено новое расписание на маршруте №{} ({}) с качеством {} (направление - {})\n" \
                "Подробности: https://transport.mos.ru/transport/schedule/route/{}". \

@@ -31,16 +31,16 @@ service_locator.register_service('event_logger', Event_logger_impl())
 repository = Repository_sqlite('mosgortrans_20220115.sqlite')
 
 quality_storage = Quality_storage()
-date = datetime.date(2022, 1, 28)
+date = datetime.date(2022, 1, 29)
 loading_continue(date, 1, 0, repository, quality_storage)
-loading_continue(date, 1, 1, repository, quality_storage)
+loading(date, 1, 1, repository, quality_storage)
 quality_storage.save(get_path_qualities()+'qualities_' + date.strftime("%Y%m%d") + '.csv')
 
 
 event_logger = Service_locator.get_instance().get_service('event_logger')
 
 if len(event_logger.get_descriptions()) > 0:
-    with open("events20220128.txt", 'w') as file:
+    with open("events20220129.txt", 'w') as file:
         file.write("\n".join(event_logger.get_descriptions()))
     message = "\n".join(event_logger.get_descriptions())
     # message = "test"

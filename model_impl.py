@@ -107,6 +107,16 @@ class Timetable_t_mos_ru(Timetable):
     def get_stops(self) -> list[Timetable_stop]:
         return self.stops
 
+    def drop_stop(self, num: int) -> 'Timetable':
+        return Timetable_t_mos_ru(
+            self.get_data_services(),
+            self.get_id_route_t_mos_ru(),
+            self.get_direction(),
+            self.get_date(),
+            self.stops[0:num] + self.stops[num + 1:],
+            self.id_timetable
+        )
+
     def __init__(self, data_services: int, id_route_t_mos_ru: str, direction: int, date: datetime.date,
                  stops: list[Timetable_stop_t_mos_ru], id_timetable: Optional[int] = None):
         self.get_data_services = lambda: data_services
