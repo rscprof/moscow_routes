@@ -48,7 +48,7 @@ class parser_timetable_t_mos_ru(parser_timetable):
                             )
 
         for stop in stops:
-            id_stop = stop.group(1)
+            # id_stop = stop.group(1)
             # data_services = stop.group(2)
             name_stop = stop.group(2)
             description = stop.group(3)
@@ -153,6 +153,8 @@ def get_route(date: datetime.date, id_route_t_mos_ru: str, direction: int, logge
 
     if not (route_info is None):
         result = route_info.set_id_route_t_mos_ru(id_route_t_mos_ru).set_direction(direction).set_date(date).build()
+        if len(result.get_stops()) == 0:  # Error of loading timetable without exceptions
+            result = None
     else:
         result = None
     return result

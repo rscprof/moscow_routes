@@ -30,7 +30,8 @@ class Quality_calculator:
 
 class Quality_calculator_max_interval(Quality_calculator):
 
-    def __init__(self, start: datetime.time, end: datetime.time):
+    def __init__(self, start=datetime.time(7, 0, 0),
+                 end=datetime.time(21, 0, 0)):
         self.start = start
         self.end = end
 
@@ -92,13 +93,17 @@ class Quality_calculator_count(Quality_calculator):
     @staticmethod
     def calculate_quality_count(route_info: Timetable) -> list[tuple[str, int]]:
         # Search min of exits
-        timetable_worse = min(route_info, key=lambda t: len(list(t.get_times())))
+        if len(list(route_info)) > 0:
+            timetable_worse = min(route_info, key=lambda t: len(list(t.get_times())))
 
-        # Calculate quality by count of exits
-        times_last_stop = sorted(timetable_worse.get_times(), key=lambda
-            time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
-        groups = groupby(times_last_stop, key=lambda time: time.get_color_special_flight())
-        return list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
+            # Calculate quality by count of exits
+            times_last_stop = sorted(timetable_worse.get_times(), key=lambda
+                time: "" if time.get_color_special_flight() is None else time.get_color_special_flight())
+            groups = groupby(times_last_stop, key=lambda time: time.get_color_special_flight())
+            result = list(map(lambda g: ("" if g[0] is None else g[0], len(list(g[1]))), groups))
+        else:
+            result = []
+        return result
 
 
 class Quality_calculator_set_good_quality(Quality_calculator):
@@ -165,6 +170,8 @@ class Quality_calculator_set_good_quality(Quality_calculator):
                             else:
                                 intersection.append((start_interval, end_current_interval))
                 result = intersection
+        if result is None:
+            result = []
         return result
 
 
@@ -178,6 +185,7 @@ class Quality_storage:
                         Quality_calculator_set_good_quality(10),
                         Quality_calculator_set_good_quality(4),
                         Quality_calculator_set_good_quality(15),
+                        Quality_calculator_set_good_quality(20),
                         Quality_calculator_set_good_quality(30),
                         Quality_calculator_count()
                         ]
@@ -212,7 +220,7 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
                                                                    route.get_equipment().to_str()))
 
     event_logger = Service_locator.get_instance().get_service('event_logger')
-    event_logger.register_event(New_timetable_event(route, route_info, direction))
+    event_logger.register_event(New_timetable_event(route, route_info, direction, date))
 
     store_route_info_with_adding_stops(repository, route.get_id_mgt(), route_info, date, direction)
 

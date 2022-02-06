@@ -40,3 +40,7 @@ class Repository:
                                             ) -> \
             Optional[Timetable]:
         pass
+
+    @abstractmethod
+    def store_route_info(self, date, direction, num_route, route_info) -> int:
+        pass
