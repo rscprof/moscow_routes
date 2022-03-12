@@ -12,4 +12,5 @@ test
 encodings.xml
 *.iml
 *.toml
+__pycache__
 
