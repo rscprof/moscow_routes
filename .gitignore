@@ -1,1 +1,15 @@
 auth.py
+.pypirc
+dist
+.pytest_cache
+.coverage
+events*
+qualities*
+*.sqlite
+*.csv
+*.xlsx
+test
+encodings.xml
+*.iml
+*.toml
+

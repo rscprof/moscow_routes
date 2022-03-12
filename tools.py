@@ -3,19 +3,48 @@ from abc import abstractmethod
 from itertools import groupby
 
 import pandas
+from moscow_routes_parser.model_impl import Timetable_builder_t_mos_ru
 
 from events.drop_route_event import Drop_route_event
 from events.new_route_event import New_route_event
 from events.new_stop_event import New_stop_event
-
 from events.new_timetable_event import New_timetable_event
-from logger import LoggerPrint, Logger
-
-from model import Route, Timetable
+from moscow_routes_parser.model import Timetable, Route, Timetable_builder, Timetable_stop
 from printer import Printer, PrinterConsole
 from repository import Repository
 from service_locator import Service_locator
-from t_mos_ru import get_route, get_list_routes
+from moscow_routes_parser.t_mos_ru import get_list_routes, get_route
+
+
+class Timetable_simple(Timetable):
+
+    def __init__(self, id_route_t_mos_ru: str, direction: int, date: datetime.date, stops: list[Timetable_stop]):
+        self.date = date
+        self.id_route_t_mos_ru = id_route_t_mos_ru
+        self.direction = direction
+        self.stops = stops
+
+    def __iter__(self):
+        return iter(self.stops)
+
+    def get_direction(self) -> int:
+        return self.direction
+
+    def get_id_route_t_mos_ru(self) -> str:
+        return self.id_route_t_mos_ru
+
+    def get_date(self) -> datetime.date:
+        return self.date
+
+    def get_stops(self) -> list[Timetable_stop]:
+        return self.stops
+
+
+def drop_stop(timetable: Timetable, num: int) -> 'Timetable':
+    stops = timetable.get_stops()
+    new_stops = stops[0:num] + stops[num + 1:]
+    return Timetable_simple(timetable.get_id_route_t_mos_ru(), timetable.get_direction(), timetable.get_date(),
+                            timetable.get_stops())
 
 
 class Quality_calculator:
@@ -44,7 +73,7 @@ class Quality_calculator_max_interval(Quality_calculator):
         results = []
         if count_stops > 2:
             for num in range(0, count_stops):
-                results.append(self.calculate_quality(timetable.drop_stop(num), self.start, self.end))
+                results.append(self.calculate_quality(drop_stop(timetable, num), self.start, self.end))
         else:
             results = [self.calculate_quality(timetable, self.start, self.end)]
         filtered = list(filter(lambda x: x != -1, results))
@@ -82,7 +111,7 @@ class Quality_calculator_count(Quality_calculator):
         results = []
         if count_stops > 2:
             for num in range(0, count_stops):
-                results.append(self.calculate_quality_count(timetable.drop_stop(num)))
+                results.append(self.calculate_quality_count(drop_stop(timetable, num)))
         else:
             results = [self.calculate_quality_count(timetable)]
         result = max(results, key=lambda exits: sum(map(lambda r: r[1], exits)))
@@ -119,7 +148,7 @@ class Quality_calculator_set_good_quality(Quality_calculator):
         results = []
         if count_stops > 2:
             for num in range(0, count_stops):
-                results.append(self.calculate_quality_set(timetable.drop_stop(num), self.interval))
+                results.append(self.calculate_quality_set(drop_stop(timetable, num), self.interval))
         else:
             results = [self.calculate_quality_set(timetable, self.interval)]
         result = max(results, key=lambda res: sum(
@@ -209,7 +238,8 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
                          direction: int,
                          printer: Printer() = PrinterConsole()):
     prepared_route_info = list(route_info)
-    routes_info = repository.load_routes_info_by_number(route.get_id_mgt(), direction)
+    routes_info = repository.load_routes_info_by_number_and_type(route.get_name(), route.get_equipment().to_number(),
+                                                                 direction)
 
     for candidate in routes_info:
         if candidate.get_stops() == prepared_route_info:
@@ -227,9 +257,9 @@ def store_route_new_info(repository: Repository, route: Route, route_info: Timet
 
 def loading(date: datetime.date, work_time: int, direction: int, repository: Repository,
             quality_storage: Quality_storage):
-    routes = get_and_store_routes_list(repository, work_time=work_time, logger=LoggerPrint(), printer=PrinterConsole())
+    routes = get_and_store_routes_list(repository, work_time=work_time, printer=PrinterConsole())
     for route in routes:
-        route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+        route_info = get_route(date, route.get_id_mgt(), direction)
         print("Route {}({}) got from service".format(route.get_name(), route.get_equipment().to_str()))
         if route_info:
             quality_storage.store_quality(route, route_info)
@@ -241,14 +271,16 @@ def loading_continue(date: datetime.date, work_time: int, direction: int, reposi
     routes = repository.get_last_snapshot(work_time=work_time)
 
     for route in routes:
-        route_info = repository.load_routes_info_by_number_and_date(route.get_id_mgt(), direction, date)
+        route_info = repository.load_routes_info_by_number_type_and_date(route.get_name(),
+                                                                         route.get_equipment().to_number(), direction,
+                                                                         date)
         # routes_info = repository.load_routes_info_by_number(route.get_id_mgt(), direction)
         # routes_filtered = list(filter(lambda timetable: timetable.get_date().date() == date, routes_info))
         if not (route_info is None):
             # route_info = routes_filtered[0]
             print("Route {} load from database".format(route.get_name()))
         else:
-            route_info = get_route(date, route.get_id_mgt(), direction, logger=LoggerPrint())
+            route_info = get_route(date, route.get_id_mgt(), direction)
             print("Route {} got from service".format(route.get_name()))
             if route_info:
                 store_route_new_info(repository, route, route_info, date, direction)
@@ -256,8 +288,8 @@ def loading_continue(date: datetime.date, work_time: int, direction: int, reposi
             quality_storage.store_quality(route, route_info)
 
 
-def get_and_store_routes_list(repository: Repository, work_time: int, logger: Logger, printer: Printer):
-    list_routes = get_list_routes(direction=0, work_time=work_time, logger=logger)
+def get_and_store_routes_list(repository: Repository, work_time: int, printer: Printer):
+    list_routes = get_list_routes(direction=0, work_time=work_time)
 
     routes_old = repository.get_last_snapshot(work_time=work_time)
     event_logger = Service_locator.get_instance().get_service('event_logger')
@@ -278,12 +310,12 @@ def get_and_store_routes_list(repository: Repository, work_time: int, logger: Lo
     return list_routes
 
 
-def store_route_info_with_adding_stops(repository: Repository, num_route: int, route_info: Timetable,
+def store_route_info_with_adding_stops(repository: Repository, num_route: str, route_info: Timetable,
                                        date: datetime.date,
                                        direction: int) -> None:
     new_stops = []
-    stops = [(stop.get_name(),) for stop in route_info]
-    old_stops = [(stop.get_name(),) for stop in repository.get_all_stops()]
+    stops = [(stop.get_name(), stop.get_coords(),) for stop in route_info]
+    old_stops = [(stop.get_name(), stop.get_coords(),) for stop in repository.get_all_stops()]
 
     event_logger = Service_locator.get_instance().get_service('event_logger')
 

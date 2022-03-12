@@ -1,7 +1,7 @@
 import datetime
 
 from event import Event
-from model import Timetable, Route
+from moscow_routes_parser.model import Route, Timetable
 
 
 class New_timetable_event(Event):
@@ -13,25 +13,38 @@ class New_timetable_event(Event):
                    name_type_in_russian[self.route.get_equipment().to_number()],
                    self.direction, self.route.get_id_mgt()
                    )
-        string += "Новые параметры качества: \n"
+        new_quality_description = ""
         for quality in self.qualities:
             descriptions = quality.get_descriptions()
             quality_descriptions = quality.calculate_qualities(self.timetable)
             for (name, description) in zip(descriptions, quality_descriptions):
-                string += "{}: {}\n".format(name, description)
+                new_quality_description += "{}: {}\n".format(name, description)
 
         from service_locator import Service_locator
         repository = Service_locator.get_instance().get_service('repository')
         date = self.date - datetime.timedelta(days=7)
-        old_timetable = repository.load_routes_info_by_number_and_date(self.route.get_id_mgt(), self.direction, date)
+        old_timetable = repository.load_routes_info_by_number_type_and_date(self.route.get_name(),
+                                                                            self.route.get_equipment().to_number(),
+                                                                            self.direction, date)
+        old_quality_description = ""
         if not (old_timetable is None):
-            string += "\nСтарые параметры качества за {}: \n".format(date.strftime("%Y%m%d"))
 
             for quality in self.qualities:
                 descriptions = quality.get_descriptions()
                 quality_descriptions = quality.calculate_qualities(old_timetable)
                 for (name, description) in zip(descriptions, quality_descriptions):
-                    string += "{}: {}\n".format(name, description)
+                    old_quality_description += "{}: {}\n".format(name, description)
+            if new_quality_description == old_quality_description:
+                string += "Изменения незначительные (не вляют на параметры качества)\n"
+            else:
+                string += "Новые параметры качества: \n"
+                string += new_quality_description
+                string += "\nСтарые параметры качества за {}: \n".format(date.strftime("%Y%m%d"))
+                string += old_quality_description
+        else:
+            string += "Новые параметры качества: \n"
+            string += new_quality_description
+
         return string
 
     def __init__(self, route: Route, timetable: Timetable, direction: int, date: datetime.date, qualities=None):

@@ -1,5 +1,5 @@
 from event import Event
-from model import Route
+from moscow_routes_parser.model import Route
 
 
 class New_route_event(Event):
