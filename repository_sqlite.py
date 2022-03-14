@@ -46,7 +46,7 @@ class Repository_sqlite(Repository):
         return result
 
     def load_routes_info_by_number_and_date(self, num_route: int, direction: int, date: datetime.date,
-                                            timetable_builder: Timetable_builder = Timetable_builder_t_mos_ru()
+                                            timetable_builder: Timetable_builder_decorator_with_id = Timetable_builder_decorator_with_id(Timetable_builder_t_mos_ru())
                                             ) -> \
             Optional[Timetable]:
         cur = self.connection.cursor()

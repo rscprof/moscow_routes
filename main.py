@@ -34,9 +34,9 @@ def send_to_telegram(event):
         print("body={}".format(result.text))
 
 
-#event_logger.register_listener(lambda event: send_to_telegram(event))
+event_logger.register_listener(lambda event: send_to_telegram(event))
 
-date = datetime.date(2022, 3, 12)
+date = datetime.date(2022, 3, 15)
 
 
 def send_to_file(event):
@@ -49,7 +49,7 @@ event_logger.register_listener(lambda event: send_to_file(event))
 
 quality_storage = Quality_storage()
 
-loading_continue(date, 1, 0, repository, quality_storage)
+loading(date, 1, 0, repository, quality_storage)
 loading(date, 1, 1, repository, quality_storage)
 quality_storage.save(get_path_qualities() + 'qualities_' + date.strftime("%Y%m%d") + '.csv')
 

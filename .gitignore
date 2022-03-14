@@ -13,4 +13,6 @@ encodings.xml
 *.iml
 *.toml
 __pycache__
+.idea
+
 
